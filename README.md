@@ -168,7 +168,7 @@ git commit -m "feat: complete family medicine tracker with Google Sheets and Wha
 # 4. Create a new repository on github.com (named e.g. 'family-medicine-tracker')
 
 # 5. Link and push to your remote repository
-git remote add origin https://github.com/<YOUR-GITHUB-USERNAME>/family-medicine-tracker.git
+git remote add origin https://github.com/Deepansri94/Medicine-Tracker.git
 git branch -M main
 git push -u origin main
 ```
