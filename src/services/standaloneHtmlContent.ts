@@ -1,0 +1,302 @@
+export const STANDALONE_HTML_CONTENT = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Family Medicine Tracker</title>
+  <meta name="description" content="Track your family medications, daily dosages, and inventory refills with Google Sheets backend and WhatsApp alerts." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0d9488;
+      --primary-dark: #0f766e;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --danger: #ef4444;
+      --danger-bg: #fef2f2;
+      --warning: #f59e0b;
+      --warning-bg: #fffbeb;
+      --success: #10b981;
+      --success-bg: #ecfdf5;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); padding: 24px 16px; }
+    .container { max-width: 1240px; margin: 0 auto; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; background: #fff; padding: 20px; border-radius: var(--radius); border: 1px solid var(--border); flex-wrap: wrap; gap: 12px; }
+    h1 { font-size: 1.5rem; color: var(--primary-dark); }
+    .subtitle { font-size: 0.875rem; color: var(--muted); }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat { background: #fff; padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); }
+    .stat-label { font-size: 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+    .stat-val { font-size: 1.75rem; font-weight: 700; margin-top: 4px; }
+    .grid { display: grid; grid-template-columns: 340px 1fr; gap: 24px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    .card { background: #fff; padding: 20px; border-radius: var(--radius); border: 1px solid var(--border); }
+    .form-group { margin-bottom: 12px; }
+    label { display: block; font-size: 0.8125rem; font-weight: 600; margin-bottom: 4px; }
+    input, select { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-family: inherit; font-size: 0.875rem; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 8px 16px; border-radius: 6px; border: 1px solid transparent; font-weight: 600; font-size: 0.875rem; cursor: pointer; text-decoration: none; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-secondary { background: #f1f5f9; color: var(--text); border-color: var(--border); }
+    .btn-sm { padding: 4px 8px; font-size: 0.75rem; }
+    .btn-stock { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+    .btn-del { background: #fff; color: var(--danger); border-color: #fecaca; }
+    .btn-wa { background: #ecfdf5; color: #047857; border-color: #a7f3d0; font-weight: 700; }
+    .btn-wa:hover { background: #d1fae5; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem; }
+    th { padding: 10px 12px; background: #f8fafc; color: var(--muted); font-size: 0.75rem; text-transform: uppercase; border-bottom: 2px solid var(--border); }
+    td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .badge { padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+    .badge-ok { background: var(--success-bg); color: #065f46; }
+    .badge-low { background: var(--warning-bg); color: #92400e; }
+    .badge-crit { background: var(--danger-bg); color: #991b1b; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+    .wa-banner { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px 16px; border-radius: var(--radius); margin-bottom: 20px; font-size: 0.875rem; color: #166534; display: flex; justify-content: space-between; align-items: center; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div>
+      <h1>Family Medicine Tracker</h1>
+      <div class="subtitle">Synced with Google Sheet "Medicines" · With WhatsApp Stock Alerts (Col I)</div>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-secondary" onclick="triggerAlertScan()">Scan &amp; Send WhatsApp</button>
+      <button class="btn btn-primary" onclick="fetchMedicines()">Sync Sheet</button>
+    </div>
+  </header>
+
+  <div class="wa-banner">
+    <div>
+      💬 <strong>WhatsApp Refill Alerts:</strong> Automated alerts trigger when medication stock &lt; 5 days supply or under Refill Threshold. <em>Column I ("Last Notified Date")</em> prevents duplicate alerts on the same day.
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-label">Total Meds</div><div class="stat-val" id="stTotal">0</div></div>
+    <div class="stat"><div class="stat-label">Critical Reorder</div><div class="stat-val" style="color:var(--danger)" id="stCrit">0</div></div>
+    <div class="stat"><div class="stat-label">Low Stock</div><div class="stat-val" style="color:var(--warning)" id="stLow">0</div></div>
+    <div class="stat"><div class="stat-label">Members</div><div class="stat-val" id="stMem">0</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2 style="font-size:1.1rem; margin-bottom:14px;">Add New Medication</h2>
+      <form id="addForm" onsubmit="addMedicine(event)">
+        <div class="form-group"><label>Member Name *</label><input type="text" id="inMember" placeholder="e.g. Grandma Martha, Dad" required></div>
+        <div class="form-group"><label>Medicine Name *</label><input type="text" id="inMed" placeholder="e.g. Metformin 500mg" required></div>
+        <div class="row">
+          <div class="form-group"><label>Dosage</label><input type="text" id="inDose" placeholder="e.g. 1 tablet"></div>
+          <div class="form-group"><label>Timing</label><input type="text" id="inTiming" placeholder="e.g. Morning"></div>
+        </div>
+        <div class="row">
+          <div class="form-group"><label>Daily Qty *</label><input type="number" id="inDaily" value="1" min="0.1" step="0.5" required></div>
+          <div class="form-group"><label>Current Stock *</label><input type="number" id="inStock" value="30" min="0" required></div>
+        </div>
+        <div class="form-group"><label>Refill Threshold (Pills)</label><input type="number" id="inThresh" value="10" min="1"></div>
+        <button type="submit" class="btn btn-primary" style="width:100%; margin-top:8px;">Save to Google Sheet</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h2 style="font-size:1.1rem;">Medication Inventory</h2>
+        <select id="memberFilter" onchange="render()" style="width:auto;"><option value="ALL">All Members</option></select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Member</th><th>Medicine</th><th>Dosage</th><th>Timing</th><th>Stock</th><th>Days Left</th><th>Status</th><th>Last Notified</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tblBody"><tr><td colspan="9" style="text-align:center; padding:20px;">Loading inventory...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // =========================================================================
+  // PASTE YOUR DEPLOYED GOOGLE APPS SCRIPT WEB APP URL HERE:
+  // =========================================================================
+  const SCRIPT_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+  const RECIPIENT_WHATSAPP = "";
+
+  let list = [];
+
+  const DEMO_ITEMS = [
+    { id: "MED-1", memberName: "Grandma Martha", medicineName: "Metformin 500mg", dosage: "1 tablet", timing: "Morning & Night", dailyQty: 2, currentStock: 6, refillThreshold: 14, lastNotifiedDate: "Today 08:30" },
+    { id: "MED-2", memberName: "Grandma Martha", medicineName: "Lisinopril 10mg", dosage: "1 tablet", timing: "Morning", dailyQty: 1, currentStock: 3, refillThreshold: 10, lastNotifiedDate: "" },
+    { id: "MED-3", memberName: "Dad Robert", medicineName: "Atorvastatin 20mg", dosage: "1 tablet", timing: "Bedtime", dailyQty: 1, currentStock: 25, refillThreshold: 10, lastNotifiedDate: "" }
+  ];
+
+  function calc(item) {
+    const d = Number(item.dailyQty) || 1;
+    const s = Number(item.currentStock) || 0;
+    const t = Number(item.refillThreshold) || 10;
+    const daysLeft = d > 0 ? Math.floor(s / d) : 999;
+    let status = "OK";
+    if (s === 0 || daysLeft <= 3 || s <= Math.floor(t / 2)) status = "Critical Reorder";
+    else if (s <= t || daysLeft <= 7) status = "Low Stock";
+    return { ...item, daysLeft, status, lastNotifiedDate: item.lastNotifiedDate || "" };
+  }
+
+  async function fetchMedicines() {
+    if (!SCRIPT_URL || SCRIPT_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) {
+      list = DEMO_ITEMS.map(calc);
+      syncUI();
+      return;
+    }
+    try {
+      const res = await fetch(SCRIPT_URL);
+      const json = await res.json();
+      if (json.status === 'success') {
+        list = (json.data || []).map(calc);
+        syncUI();
+      }
+    } catch (e) {
+      console.warn("Using demo data due to fetch error", e);
+      list = DEMO_ITEMS.map(calc);
+      syncUI();
+    }
+  }
+
+  async function addMedicine(e) {
+    e.preventDefault();
+    const item = {
+      action: "ADD",
+      id: "MED-" + Date.now(),
+      memberName: document.getElementById("inMember").value.trim(),
+      medicineName: document.getElementById("inMed").value.trim(),
+      dosage: document.getElementById("inDose").value.trim(),
+      timing: document.getElementById("inTiming").value.trim(),
+      dailyQty: parseFloat(document.getElementById("inDaily").value) || 1,
+      currentStock: parseInt(document.getElementById("inStock").value) || 0,
+      refillThreshold: parseInt(document.getElementById("inThresh").value) || 10,
+      lastNotifiedDate: ""
+    };
+
+    if (SCRIPT_URL && !SCRIPT_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) {
+      fetch(SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "text/plain"}, body: JSON.stringify(item) });
+    }
+
+    list.unshift(calc(item));
+    document.getElementById("addForm").reset();
+    document.getElementById("inDaily").value = "1";
+    document.getElementById("inStock").value = "30";
+    document.getElementById("inThresh").value = "10";
+    syncUI();
+  }
+
+  function updateStock(id, delta) {
+    const item = list.find(x => x.id === id);
+    if (!item) return;
+    item.currentStock = Math.max(0, item.currentStock + delta);
+    Object.assign(item, calc(item));
+    if (SCRIPT_URL && !SCRIPT_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) {
+      fetch(SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "text/plain"}, body: JSON.stringify({ action: "UPDATE_STOCK", id, newStock: item.currentStock }) });
+    }
+    syncUI();
+  }
+
+  function sendWhatsAppDirect(item) {
+    const text = encodeURIComponent(
+      \`🚨 *FAMILY MEDICINE REFILL ALERT*\\n\\n\` +
+      \`👤 *Member:* \${item.memberName}\\n\` +
+      \`💊 *Medicine:* \${item.medicineName} (\${item.dosage || ''})\\n\` +
+      \`📦 *Current Stock:* \${item.currentStock} pills\\n\` +
+      \`⏱️ *Supply Left:* \${item.daysLeft} days\\n\` +
+      \`⚠️ *Status:* \${item.status}\\n\\n\` +
+      \`👉 Please arrange a pharmacy refill soon.\`
+    );
+    const phone = RECIPIENT_WHATSAPP.replace(/[^0-9]/g, '');
+    window.open(\`https://wa.me/\${phone}?text=\${text}\`, '_blank');
+  }
+
+  function triggerAlertScan() {
+    if (SCRIPT_URL && !SCRIPT_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) {
+      fetch(SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "text/plain"}, body: JSON.stringify({ action: "TRIGGER_WHATSAPP_ALERT", force: false }) });
+      alert("Triggered WhatsApp alert scan in Google Apps Script! Pending low stock alerts will be delivered.");
+    } else {
+      alert("Scanning demo items... In live mode, Google Apps Script checks all medicines and sends WhatsApp alerts for items with < 5 days supply.");
+    }
+  }
+
+  function deleteMed(id) {
+    if (!confirm("Delete medication?")) return;
+    list = list.filter(x => x.id !== id);
+    if (SCRIPT_URL && !SCRIPT_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) {
+      fetch(SCRIPT_URL, { method: "POST", mode: "no-cors", headers: {"Content-Type": "text/plain"}, body: JSON.stringify({ action: "DELETE", id }) });
+    }
+    syncUI();
+  }
+
+  function syncUI() {
+    const sel = document.getElementById("memberFilter");
+    const cur = sel.value;
+    const members = Array.from(new Set(list.map(x => x.memberName).filter(Boolean))).sort();
+    sel.innerHTML = '<option value="ALL">All Members</option>' + members.map(m => \`<option value="\${m}">\${m}</option>\`).join('');
+    if (members.includes(cur)) sel.value = cur;
+
+    document.getElementById("stTotal").innerText = list.length;
+    document.getElementById("stCrit").innerText = list.filter(x => x.status === "Critical Reorder").length;
+    document.getElementById("stLow").innerText = list.filter(x => x.status === "Low Stock").length;
+    document.getElementById("stMem").innerText = members.length;
+
+    render();
+  }
+
+  function render() {
+    const tbody = document.getElementById("tblBody");
+    const filter = document.getElementById("memberFilter").value;
+    const rows = filter === "ALL" ? list : list.filter(x => x.memberName === filter);
+
+    if (rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px; color:#64748b;">No medications found.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(item => {
+      let bClass = "badge-ok";
+      if (item.status === "Critical Reorder") bClass = "badge-crit";
+      else if (item.status === "Low Stock") bClass = "badge-low";
+
+      const showWa = (item.status !== "OK" || item.daysLeft < 5);
+
+      return \`<tr>
+        <td><strong>\${item.memberName}</strong></td>
+        <td><strong>\${item.medicineName}</strong></td>
+        <td>\${item.dosage || '-'}</td>
+        <td>\${item.timing || '-'}</td>
+        <td>\${item.currentStock} <small style="color:#64748b;">(d: \${item.dailyQty})</small></td>
+        <td><strong>\${item.daysLeft >= 900 ? '∞' : item.daysLeft + ' d'}</strong></td>
+        <td><span class="badge \${bClass}">\${item.status}</span></td>
+        <td><small style="color:#64748b;">\${item.lastNotifiedDate || 'Not yet'}</small></td>
+        <td>
+          <div style="display:flex; gap:4px;">
+            \${showWa ? \`<button class="btn btn-sm btn-wa" onclick='sendWhatsAppDirect(\${JSON.stringify(item)})' title="Send WhatsApp">💬</button>\` : ''}
+            <button class="btn btn-sm btn-stock" onclick="updateStock('\${item.id}', 10)">+10</button>
+            <button class="btn btn-sm btn-stock" onclick="updateStock('\${item.id}', 30)">+30</button>
+            <button class="btn btn-sm btn-del" onclick="deleteMed('\${item.id}')">✕</button>
+          </div>
+        </td>
+      </tr>\`;
+    }).join('');
+  }
+
+  window.onload = fetchMedicines;
+</script>
+</body>
+</html>
+`;
